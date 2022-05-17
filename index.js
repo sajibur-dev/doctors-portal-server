@@ -11,7 +11,9 @@ app.use(cors());
 app.use(express.json());
 
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.twtll.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_USER_PASS}@cluster0.rgm3e.mongodb.net/?retryWrites=true&w=majority`;
+
+console.log(uri);
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
@@ -21,7 +23,7 @@ function verifyJWT(req, res, next) {
     return res.status(401).send({ message: 'UnAuthorized access' });
   }
   const token = authHeader.split(' ')[1];
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+  jwt.verify(token, process.env.ACCESS_SECRET_TOKEN, function (err, decoded) {
     if (err) {
       return res.status(403).send({ message: 'Forbidden access' })
     }
@@ -34,7 +36,7 @@ function verifyJWT(req, res, next) {
 async function run() {
   try {
     await client.connect();
-    const serviceCollection = client.db('doctors_portal').collection('services');
+    const serviceCollection = client.db('doctors_portal').collection('service');
     const bookingCollection = client.db('doctors_portal').collection('bookings');
     const userCollection = client.db('doctors_portal').collection('users');
 
@@ -44,6 +46,8 @@ async function run() {
       const services = await cursor.toArray();
       res.send(services);
     });
+
+
 
     app.get('/user', verifyJWT, async (req, res) => {
       const users = await userCollection.find().toArray();
@@ -84,7 +88,7 @@ async function run() {
         $set: user,
       };
       const result = await userCollection.updateOne(filter, updateDoc, options);
-      const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+      const token = jwt.sign({ email: email }, process.env.ACCESS_SECRET_TOKEN, { expiresIn: '1d' })
       res.send({ result, token });
     })
 

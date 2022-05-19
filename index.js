@@ -3,16 +3,18 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 
 const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
+app.use(express.static("public"));
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_USER_PASS}@cluster0.rgm3e.mongodb.net/?retryWrites=true&w=majority`;
 
-console.log(uri);
 
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
@@ -155,6 +157,13 @@ async function run() {
       }
     });
 
+    app.get('/booking/:id',verifyJWT,async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id:ObjectId(id)};
+      const booking = await bookingCollection.findOne(query);
+      res.send(booking)
+    })
+
     app.post("/booking", async (req, res) => {
       const booking = req.body;
       const query = {
@@ -190,7 +199,26 @@ async function run() {
       const qeury={_id:ObjectId(id)};
       const result = await doctorCollection.deleteOne(qeury);
       res.send(result);
-    })
+    });
+
+    // stripe payment process api : 
+
+    app.post("/create-payment-intent", verifyJWT,async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100
+    
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+    
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
   } finally {
   }
 }
